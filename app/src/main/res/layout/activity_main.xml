@@ -4,15 +4,27 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Fragment container -->
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:text="Nearby Memories"
+        android:textSize="27sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:padding="12dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <!-- Fragment container fills available space -->
     <FrameLayout
         android:id="@+id/container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- Simple bottom bar with 3 buttons -->
+    <!-- Bottom bar with 3 buttons -->
     <LinearLayout
+        android:id="@+id/bottomBar"
         android:orientation="horizontal"
         android:padding="12dp"
         android:gravity="center"
@@ -35,7 +47,7 @@
 
         <Button
             android:id="@+id/btnDetail"
-            android:text="Detail"
+            android:text="Details"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1" />

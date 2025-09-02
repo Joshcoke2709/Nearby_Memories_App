@@ -1,30 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:gravity="center"
+    android:padding="12dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Status + coords -->
     <TextView
         android:id="@+id/tvStatus"
         android:text="Tap 'My Location' to get your current location."
-        android:textSize="18sp"
-        android:layout_marginBottom="16dp"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
     <TextView
         android:id="@+id/tvCoords"
-        android:text="Latitute: —  Longitude: —"
-        android:textSize="27sp"
-        android:layout_marginBottom="24dp"
+        android:text="Latitude: —   Longitude: —"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <Button
-        android:id="@+id/btnLocate"
-        android:text="My Location"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+    <!-- Actions -->
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/btnLocate"
+            android:text="My Location"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/btnAddHere"
+            android:text="Add Memory Here"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <!-- Map container fills remaining space -->
+    <FrameLayout
+        android:id="@+id/map_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 </LinearLayout>

@@ -8,22 +8,17 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.joshuamemories.nearbymemoriesapp.R;
 import com.joshuamemories.nearbymemoriesapp.Memory;
-
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MemoryAdapter extends RecyclerView.Adapter<MemoryAdapter.VH> {
 
-    public interface OnClick {
-        void onClick(Memory memory);
-    }
+    public interface OnClick { void onClick(Memory m); }
     private final OnClick onClick;
     private final List<Memory> items = new ArrayList<>();
 
-    public MemoryAdapter(OnClick onClick) {
-        this.onClick = onClick;
-    }
+    public MemoryAdapter(OnClick onClick) { this.onClick = onClick; }
 
     public void submitList(List<Memory> data) {
         items.clear();

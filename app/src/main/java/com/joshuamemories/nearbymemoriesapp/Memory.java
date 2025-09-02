@@ -8,12 +8,12 @@ public class Memory {
     @PrimaryKey(autoGenerate = true)
     public long id;
 
-    public String title;          // required
-    public double latitude;       // required
-    public double longitude;      // required
+    public String title;
+    public double latitude;
+    public double longitude;
 
-    public String contactUri;     // optional
-    public String photoUri;       // optional
-    public String weatherJson;    // optional
-    public long createdAt;        // epoch millis
+    public String contactUri;   // optional
+    public String photoUri;     // optional
+    public String weatherJson;  // optional
+    public long createdAt;
 }

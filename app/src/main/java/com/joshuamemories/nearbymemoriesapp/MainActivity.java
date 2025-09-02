@@ -18,7 +18,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if (savedInstanceState == null) {
-            showFragment(new MemoryListFragment()); // default screen
+            showFragment(new MemoryListFragment());
         }
 
         Button btnMap = findViewById(R.id.btnMap);
@@ -34,7 +34,6 @@ public class MainActivity extends AppCompatActivity {
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.container, fragment)
-                .addToBackStack(null)
                 .commit();
     }
 }

@@ -19,5 +19,3 @@ public interface MemoryDao {
     @Query("DELETE FROM memories")
     void clearAll();
 }
-
-

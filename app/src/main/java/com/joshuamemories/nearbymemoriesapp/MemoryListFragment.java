@@ -1,10 +1,13 @@
 package com.joshuamemories.nearbymemoriesapp;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -44,27 +47,43 @@ public class MemoryListFragment extends Fragment {
         RecyclerView rv = v.findViewById(R.id.rvMemories);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new MemoryAdapter(memory -> {
-            // open detail
+            // later: pass memory.id to detail
             ((MainActivity) requireActivity()).showFragment(new MemoryDetailFragment());
-            // (Next step: pass memory.id to detail)
         });
         rv.setAdapter(adapter);
 
-        // observe data
         LiveData<List<Memory>> live = dao.getAll();
         live.observe(getViewLifecycleOwner(), adapter::submitList);
 
-        // TEMP: add dummy memory when + pressed (until we wire real Add flow)
         Button btnAdd = v.findViewById(R.id.btnAdd);
-        btnAdd.setOnClickListener(view -> {
-            Executors.newSingleThreadExecutor().execute(() -> {
-                Memory m = new Memory();
-                m.title = "Test memory";
-                m.latitude = 18.0179;   // Kingston-ish dummy
-                m.longitude = -76.8099;
-                m.createdAt = System.currentTimeMillis();
-                dao.insert(m);
-            });
+        btnAdd.setOnClickListener(view -> showAddDialog());
+    }
+
+    private void showAddDialog() {
+        final EditText input = new EditText(requireContext());
+        input.setHint("Title");
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("New Memory")
+                .setMessage("Enter a title")
+                .setView(input)
+                .setPositiveButton("Save", (d, which) -> insertMemory(input.getText().toString().trim()))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void insertMemory(String title) {
+        if (title.isEmpty()) title = "Untitled";
+        // For now, placeholder coords — we’ll fill real location in the Add flow
+        final String t = title;
+        Executors.newSingleThreadExecutor().execute(() -> {
+            Memory m = new Memory();
+            m.title = t;
+            m.latitude = 0.0;     // TODO: replace with real location soon
+            m.longitude = 0.0;
+            m.createdAt = System.currentTimeMillis();
+            dao.insert(m);
         });
     }
 }
