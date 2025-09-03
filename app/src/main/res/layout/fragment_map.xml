@@ -5,37 +5,51 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Status + coords -->
-    <TextView
+    <!-- Search row -->
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <EditText
+            android:id="@+id/etSearch"
+            android:hint="Search address or place"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:singleLine="true" />
+        <Button
+            android:id="@+id/btnSearch"
+            android:text="Go"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+     <TextView
         android:id="@+id/tvStatus"
         android:text="Tap 'My Location' to get your current location."
-        android:textSize="16sp"
-        android:layout_marginBottom="8dp"
+        android:textSize="14sp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
     <TextView
         android:id="@+id/tvCoords"
         android:text="Latitude: —   Longitude: —"
-        android:textSize="16sp"
-        android:layout_marginBottom="8dp"
+        android:textSize="14sp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
     <!-- Actions -->
     <LinearLayout
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="6dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
-
         <Button
             android:id="@+id/btnLocate"
             android:text="My Location"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1" />
-
         <Button
             android:id="@+id/btnAddHere"
             android:text="Add Memory Here"
@@ -44,10 +58,13 @@
             android:layout_weight="1" />
     </LinearLayout>
 
-    <!-- Map container fills remaining space -->
+    <!-- Map fills remaining space -->
     <FrameLayout
         android:id="@+id/map_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
+
+    <!-- Horizontal list of saved memories -->
+
 </LinearLayout>

@@ -12,8 +12,12 @@ public class Memory {
     public double latitude;
     public double longitude;
 
-    public String contactUri;   // optional
-    public String photoUri;     // optional
-    public String weatherJson;  // optional
+    public String contactUri;
+    public String photoUri;
+    public String weatherJson;
     public long createdAt;
+
+    public String placeName;
+    public String imageUrl;    
+
 }

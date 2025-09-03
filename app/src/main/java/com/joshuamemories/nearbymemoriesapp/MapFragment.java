@@ -3,6 +3,8 @@ package com.joshuamemories.nearbymemoriesapp;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.text.InputType;
@@ -19,6 +21,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -32,29 +36,32 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Executors;
 
 public class MapFragment extends Fragment implements OnMapReadyCallback {
 
     private GoogleMap gmap;
     private TextView tvStatus, tvCoords;
-    private Button btnLocate, btnAddHere;
+    private Button btnLocate, btnAddHere, btnSearch;
+    private EditText etSearch;
+
+    private RecyclerView rv;
+    private MapMemoryAdapter mapAdapter;
 
     private FusedLocationProviderClient fusedClient;
     private MemoryDao dao;
 
-    private LatLng lastFix; // remember last known location for "Add Here"
+    private LatLng lastFix;
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
                 boolean fine = Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false));
                 boolean coarse = Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false));
-                if (fine || coarse) {
-                    getLocation();
-                } else {
-                    tvStatus.setText("Location permission denied.");
-                }
+                if (fine || coarse) getLocation();
+                else tvStatus.setText("Location permission denied.");
             });
 
     @Nullable
@@ -69,21 +76,31 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(v, savedInstanceState);
 
+        etSearch = v.findViewById(R.id.etSearch);
+        btnSearch = v.findViewById(R.id.btnSearch);
         tvStatus = v.findViewById(R.id.tvStatus);
         tvCoords = v.findViewById(R.id.tvCoords);
         btnLocate = v.findViewById(R.id.btnLocate);
         btnAddHere = v.findViewById(R.id.btnAddHere);
 
+        rv = v.findViewById(R.id.rvMapMemories);
+        rv.setLayoutManager(new LinearLayoutManager(requireContext(), RecyclerView.HORIZONTAL, false));
+        mapAdapter = new MapMemoryAdapter(memory -> {
+            if (gmap != null) {
+                LatLng pos = new LatLng(memory.latitude, memory.longitude);
+                gmap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 16f));
+            }
+        });
+        rv.setAdapter(mapAdapter);
+
         fusedClient = LocationServices.getFusedLocationProviderClient(requireActivity());
         dao = NearbyDatabase.get(requireContext()).memoryDao();
 
-        // Attach SupportMapFragment into our map_container
         SupportMapFragment mapFragment = (SupportMapFragment)
                 getChildFragmentManager().findFragmentById(R.id.map_container);
         if (mapFragment == null) {
             mapFragment = SupportMapFragment.newInstance();
-            getChildFragmentManager()
-                    .beginTransaction()
+            getChildFragmentManager().beginTransaction()
                     .replace(R.id.map_container, mapFragment)
                     .commitNow();
         }
@@ -91,6 +108,33 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
         btnLocate.setOnClickListener(v1 -> ensurePermissionThenLocate());
         btnAddHere.setOnClickListener(v12 -> promptAndSaveAtLastFix());
+        btnSearch.setOnClickListener(v13 -> doGeocodeSearch());
+    }
+
+    private void doGeocodeSearch() {
+        String q = etSearch.getText() != null ? etSearch.getText().toString().trim() : "";
+        if (q.isEmpty()) { tvStatus.setText("Enter a place or address."); return; }
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                Geocoder geocoder = new Geocoder(requireContext(), Locale.getDefault());
+                List<Address> results = geocoder.getFromLocationName(q, 1);
+                if (results != null && !results.isEmpty()) {
+                    Address a = results.get(0);
+                    LatLng pos = new LatLng(a.getLatitude(), a.getLongitude());
+                    requireActivity().runOnUiThread(() -> {
+                        lastFix = pos;
+                        tvCoords.setText(String.format("Latitude: %.6f   Longitude: %.6f", pos.latitude, pos.longitude));
+                        tvStatus.setText("Found: " + (a.getFeatureName() != null ? a.getFeatureName() : q));
+                        if (gmap != null) gmap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 15f));
+                    });
+                } else {
+                    requireActivity().runOnUiThread(() -> tvStatus.setText("No results for: " + q));
+                }
+            } catch (IOException e) {
+                requireActivity().runOnUiThread(() -> tvStatus.setText("Search failed: " + e.getMessage()));
+            }
+        });
     }
 
     private void ensurePermissionThenLocate() {
@@ -98,58 +142,34 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         boolean coarseGranted = ContextCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-
-        if (fineGranted || coarseGranted) {
-            getLocation();
-        } else {
-            permissionLauncher.launch(new String[] {
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-            });
-        }
+        if (fineGranted || coarseGranted) getLocation();
+        else permissionLauncher.launch(new String[]{ Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION });
     }
 
     @SuppressLint("MissingPermission")
     private void getLocation() {
         tvStatus.setText("Getting location…");
-
-        fusedClient.getLastLocation()
-                .addOnSuccessListener(loc -> {
-                    if (loc != null) {
-                        onNewFix(loc);
-                    } else {
-                        fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
-                                .addOnSuccessListener(this::onNewFix)
-                                .addOnFailureListener(e -> tvStatus.setText("Failed: " + e.getMessage()));
-                    }
-                })
-                .addOnFailureListener(e -> tvStatus.setText("Failed: " + e.getMessage()));
+        fusedClient.getLastLocation().addOnSuccessListener(loc -> {
+            if (loc != null) onNewFix(loc);
+            else fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                    .addOnSuccessListener(this::onNewFix)
+                    .addOnFailureListener(e -> tvStatus.setText("Failed: " + e.getMessage()));
+        }).addOnFailureListener(e -> tvStatus.setText("Failed: " + e.getMessage()));
     }
 
     private void onNewFix(@Nullable Location loc) {
-        if (loc == null) {
-            tvStatus.setText("Could not get a current fix.");
-            return;
-        }
+        if (loc == null) { tvStatus.setText("Could not get a current fix."); return; }
         lastFix = new LatLng(loc.getLatitude(), loc.getLongitude());
-        tvCoords.setText(String.format("Latitude: %.6f   Longitude: %.6f",
-                lastFix.latitude, lastFix.longitude));
+        tvCoords.setText(String.format("Latitude: %.6f   Longitude: %.6f", lastFix.latitude, lastFix.longitude));
         tvStatus.setText("Location acquired ✅");
-
-        if (gmap != null) {
-            gmap.animateCamera(CameraUpdateFactory.newLatLngZoom(lastFix, 16f));
-        }
+        if (gmap != null) gmap.animateCamera(CameraUpdateFactory.newLatLngZoom(lastFix, 16f));
     }
 
     private void promptAndSaveAtLastFix() {
-        if (lastFix == null) {
-            tvStatus.setText("Get your location first, then add.");
-            return;
-        }
+        if (lastFix == null) { tvStatus.setText("Get your location first, then add."); return; }
         final EditText input = new EditText(requireContext());
         input.setHint("Memory title");
         input.setInputType(InputType.TYPE_CLASS_TEXT);
-
         new android.app.AlertDialog.Builder(requireContext())
                 .setTitle("New Memory")
                 .setMessage("Enter a title for this location")
@@ -164,12 +184,13 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         final String t = title;
         final double lat = lastFix.latitude;
         final double lon = lastFix.longitude;
-
         Executors.newSingleThreadExecutor().execute(() -> {
             Memory m = new Memory();
             m.title = t;
             m.latitude = lat;
             m.longitude = lon;
+            m.placeName = t;            // quick fill; we can reverse-geocode later
+            m.imageUrl = null;          // placeholder for now
             m.createdAt = System.currentTimeMillis();
             dao.insert(m);
         });
@@ -178,46 +199,40 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         gmap = googleMap;
-
-        // Interactive controls
         gmap.getUiSettings().setZoomControlsEnabled(true);
         gmap.getUiSettings().setZoomGesturesEnabled(true);
         gmap.getUiSettings().setScrollGesturesEnabled(true);
         gmap.getUiSettings().setRotateGesturesEnabled(true);
         gmap.getUiSettings().setTiltGesturesEnabled(true);
 
-        // My Location (blue dot) if permission granted
-        boolean fine = ContextCompat.checkSelfPermission(requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-        boolean coarse = ContextCompat.checkSelfPermission(requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean fine = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         if (fine || coarse) gmap.setMyLocationEnabled(true);
 
-        // Show existing memories as red pins
-        dao.getAll().observe(getViewLifecycleOwner(), this::renderMarkers);
+        // markers + list
+        dao.getAll().observe(getViewLifecycleOwner(), list -> {
+            renderMarkers(list);
+            mapAdapter.submit(list);
+        });
     }
 
     private void renderMarkers(@Nullable List<Memory> memories) {
         if (gmap == null) return;
-
         gmap.clear();
-
         if (memories == null || memories.isEmpty()) {
-            // Default: Jamaica view
             LatLng jamaica = new LatLng(18.1096, -77.2975);
             gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(jamaica, 7f));
             return;
         }
-
-        LatLngBounds.Builder bounds = LatLngBounds.builder();
+        LatLngBounds.Builder b = LatLngBounds.builder();
         for (Memory m : memories) {
             LatLng pos = new LatLng(m.latitude, m.longitude);
             gmap.addMarker(new MarkerOptions()
                     .position(pos)
                     .title(m.title)
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
-            bounds.include(pos);
+            b.include(pos);
         }
-        gmap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), 80));
+        gmap.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), 80));
     }
 }
