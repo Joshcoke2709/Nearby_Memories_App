@@ -18,6 +18,9 @@ public class Memory {
     public long createdAt;
 
     public String placeName;
-    public String imageUrl;    
+    public String imageUri; // persistable content:// URI for a photo
+    public String description;   // free text
+    public Long   eventDateMs;   // optional custom date (millis since epoch)
+
 
 }

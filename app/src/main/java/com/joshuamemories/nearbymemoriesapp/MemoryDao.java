@@ -5,6 +5,8 @@ import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Update;
+
 
 import java.util.List;
 
@@ -18,4 +20,11 @@ public interface MemoryDao {
 
     @Query("DELETE FROM memories")
     void clearAll();
+
+    @Query("SELECT * FROM memories WHERE id = :id LIMIT 1")
+    androidx.lifecycle.LiveData<Memory> observeById(long id);
+
+    @Update
+    int update(Memory m);
+
 }

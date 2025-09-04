@@ -5,7 +5,7 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {Memory.class}, version = 1, exportSchema = false)
+@Database(entities = {Memory.class}, version = 4, exportSchema = false)
 public abstract class NearbyDatabase extends RoomDatabase {
     public abstract MemoryDao memoryDao();
 
@@ -16,10 +16,12 @@ public abstract class NearbyDatabase extends RoomDatabase {
             synchronized (NearbyDatabase.class) {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(
-                            ctx.getApplicationContext(),
-                            NearbyDatabase.class,
-                            "nearby_memories.db"
-                    ).build();
+                                    ctx.getApplicationContext(),
+                                    NearbyDatabase.class,
+                                    "nearby_memories.db"
+                            )
+                            .fallbackToDestructiveMigration()
+                            .build();
                 }
             }
         }

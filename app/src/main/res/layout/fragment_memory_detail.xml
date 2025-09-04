@@ -1,11 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvMapMemories"
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="16dp"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:paddingTop="6dp" />
-</FrameLayout>
+        android:layout_height="wrap_content">
+
+        <!-- Photo -->
+        <ImageView
+            android:id="@+id/imgPhoto"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:scaleType="centerCrop"
+            android:src="@android:drawable/ic_menu_gallery" />
+
+        <Button
+            android:id="@+id/btnPickPhoto"
+            android:text="Pick Photo"
+            android:layout_marginTop="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:textStyle="bold"
+            android:textSize="20sp"
+            android:layout_marginTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Place -->
+        <TextView
+            android:id="@+id/tvPlace"
+            android:textSize="16sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Coords -->
+        <TextView
+            android:id="@+id/tvCoords"
+            android:textSize="14sp"
+            android:layout_marginTop="6dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Created date (read-only) -->
+        <TextView
+            android:id="@+id/tvCreated"
+            android:textSize="14sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Optional custom date (user-set) -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <TextView
+                android:id="@+id/tvEventDate"
+                android:text="(No event date)"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"/>
+            <Button
+                android:id="@+id/btnPickDate"
+                android:text="Set Date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <!-- Optional description -->
+        <TextView
+            android:text="Description (optional)"
+            android:layout_marginTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/etDescription"
+            android:hint="Add notes about this memory..."
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:gravity="top"
+            android:background="@android:drawable/edit_text"
+            android:padding="8dp"
+            android:inputType="textMultiLine"
+            android:maxLines="6"/>
+
+        <Button
+            android:id="@+id/btnSave"
+            android:text="Save"
+            android:layout_marginTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+</ScrollView>

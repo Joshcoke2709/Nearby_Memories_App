@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,12 +17,6 @@ import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.joshuamemories.nearbymemoriesapp.MainActivity;
-import com.joshuamemories.nearbymemoriesapp.R;
-import com.joshuamemories.nearbymemoriesapp.Memory;
-import com.joshuamemories.nearbymemoriesapp.MemoryDao;
-import com.joshuamemories.nearbymemoriesapp.NearbyDatabase;
-
 import java.util.List;
 import java.util.concurrent.Executors;
 
@@ -29,6 +24,7 @@ public class MemoryListFragment extends Fragment {
 
     private MemoryDao dao;
     private MemoryAdapter adapter;
+    private TextView tvEmpty;
 
     @Nullable
     @Override
@@ -46,17 +42,26 @@ public class MemoryListFragment extends Fragment {
 
         RecyclerView rv = v.findViewById(R.id.rvMemories);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
+
         adapter = new MemoryAdapter(memory -> {
-            // later: pass memory.id to detail
-            ((MainActivity) requireActivity()).showFragment(new MemoryDetailFragment());
+            // open details when a row is tapped
+            MemoryDetailFragment f = MemoryDetailFragment.newInstance(memory.id);
+            ((MainActivity) requireActivity()).showFragment(f);
         });
         rv.setAdapter(adapter);
 
-        LiveData<List<Memory>> live = dao.getAll();
-        live.observe(getViewLifecycleOwner(), adapter::submitList);
-
+        tvEmpty = v.findViewById(R.id.tvEmpty);
         Button btnAdd = v.findViewById(R.id.btnAdd);
         btnAdd.setOnClickListener(view -> showAddDialog());
+
+        LiveData<List<Memory>> live = dao.getAll();
+        live.observe(getViewLifecycleOwner(), list -> {
+            adapter.submitList(list);
+            tvEmpty.setVisibility((list == null || list.isEmpty()) ? View.VISIBLE : View.GONE);
+
+            // Optional: auto-seed a few items the very first time if empty
+            if (list == null || list.isEmpty()) seedSamplesOnce();
+        });
     }
 
     private void showAddDialog() {
@@ -75,15 +80,46 @@ public class MemoryListFragment extends Fragment {
 
     private void insertMemory(String title) {
         if (title.isEmpty()) title = "Untitled";
-        // For now, placeholder coords — we’ll fill real location in the Add flow
         final String t = title;
+
+        // For now, use safe non-zero coords. Map “Add Here” saves real coords anyway.
+        final double lat = 18.1096;   // Jamaica-ish
+        final double lon = -77.2975;
+
         Executors.newSingleThreadExecutor().execute(() -> {
             Memory m = new Memory();
             m.title = t;
-            m.latitude = 0.0;     // TODO: replace with real location soon
-            m.longitude = 0.0;
+            m.latitude = lat;
+            m.longitude = lon;
             m.createdAt = System.currentTimeMillis();
             dao.insert(m);
+        });
+    }
+
+    private void seedSamplesOnce() {
+        // Drop a few recognizable pins so the list isn't empty
+        Executors.newSingleThreadExecutor().execute(() -> {
+            // avoid double seeding if user quickly navigates
+            if (dao.getAll().getValue() != null && !dao.getAll().getValue().isEmpty()) return;
+
+            Memory a = new Memory();
+            a.title = "Downtown Kingston";
+            a.latitude = 17.9970; a.longitude = -76.7936;
+            a.createdAt = System.currentTimeMillis();
+
+            Memory b = new Memory();
+            b.title = "Montego Bay";
+            b.latitude = 18.4762; b.longitude = -77.8939;
+            b.createdAt = System.currentTimeMillis();
+
+            Memory c = new Memory();
+            c.title = "Ocho Rios";
+            c.latitude = 18.4076; c.longitude = -77.1031;
+            c.createdAt = System.currentTimeMillis();
+
+            dao.insert(a);
+            dao.insert(b);
+            dao.insert(c);
         });
     }
 }

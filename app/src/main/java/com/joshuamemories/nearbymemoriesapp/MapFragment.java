@@ -21,8 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -48,8 +47,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     private Button btnLocate, btnAddHere, btnSearch;
     private EditText etSearch;
 
-    private RecyclerView rv;
-    private MapMemoryAdapter mapAdapter;
+
+
 
     private FusedLocationProviderClient fusedClient;
     private MemoryDao dao;
@@ -82,16 +81,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         tvCoords = v.findViewById(R.id.tvCoords);
         btnLocate = v.findViewById(R.id.btnLocate);
         btnAddHere = v.findViewById(R.id.btnAddHere);
-
-        rv = v.findViewById(R.id.rvMapMemories);
-        rv.setLayoutManager(new LinearLayoutManager(requireContext(), RecyclerView.HORIZONTAL, false));
-        mapAdapter = new MapMemoryAdapter(memory -> {
-            if (gmap != null) {
-                LatLng pos = new LatLng(memory.latitude, memory.longitude);
-                gmap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 16f));
-            }
-        });
-        rv.setAdapter(mapAdapter);
 
         fusedClient = LocationServices.getFusedLocationProviderClient(requireActivity());
         dao = NearbyDatabase.get(requireContext()).memoryDao();
@@ -161,7 +150,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         if (loc == null) { tvStatus.setText("Could not get a current fix."); return; }
         lastFix = new LatLng(loc.getLatitude(), loc.getLongitude());
         tvCoords.setText(String.format("Latitude: %.6f   Longitude: %.6f", lastFix.latitude, lastFix.longitude));
-        tvStatus.setText("Location acquired ✅");
+        tvStatus.setText("Location acquired");
         if (gmap != null) gmap.animateCamera(CameraUpdateFactory.newLatLngZoom(lastFix, 16f));
     }
 
@@ -189,8 +178,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
             m.title = t;
             m.latitude = lat;
             m.longitude = lon;
-            m.placeName = t;            // quick fill; we can reverse-geocode later
-            m.imageUrl = null;          // placeholder for now
+            m.placeName = t;            // quick fill
+            m.imageUri = null;          // placeholder for now
             m.createdAt = System.currentTimeMillis();
             dao.insert(m);
         });
@@ -199,40 +188,81 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         gmap = googleMap;
+
         gmap.getUiSettings().setZoomControlsEnabled(true);
         gmap.getUiSettings().setZoomGesturesEnabled(true);
         gmap.getUiSettings().setScrollGesturesEnabled(true);
         gmap.getUiSettings().setRotateGesturesEnabled(true);
         gmap.getUiSettings().setTiltGesturesEnabled(true);
 
-        boolean fine = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-        boolean coarse = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean fine = ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         if (fine || coarse) gmap.setMyLocationEnabled(true);
 
-        // markers + list
-        dao.getAll().observe(getViewLifecycleOwner(), list -> {
-            renderMarkers(list);
-            mapAdapter.submit(list);
+        gmap.setOnInfoWindowClickListener(marker -> {
+            Object tag = marker.getTag();
+            if (tag instanceof Long) {
+                long id = (Long) tag;
+                MemoryDetailFragment f = MemoryDetailFragment.newInstance(id);
+                ((MainActivity) requireActivity()).showFragment(f);
+            }
         });
+
+
+        dao.getAll().observe(getViewLifecycleOwner(), this::renderMarkers);
     }
+
 
     private void renderMarkers(@Nullable List<Memory> memories) {
         if (gmap == null) return;
+
         gmap.clear();
+
+        // default view if we can’t show any markers
+        LatLng fallback = new LatLng(18.1096, -77.2975); // Jamaica
+
         if (memories == null || memories.isEmpty()) {
-            LatLng jamaica = new LatLng(18.1096, -77.2975);
-            gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(jamaica, 7f));
+            gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(fallback, 7f));
             return;
         }
+
         LatLngBounds.Builder b = LatLngBounds.builder();
+        boolean hasPoint = false;
+
         for (Memory m : memories) {
+            if (Double.isNaN(m.latitude) || Double.isNaN(m.longitude)) continue;
+            if (m.latitude == 0.0 && m.longitude == 0.0) continue;
+
             LatLng pos = new LatLng(m.latitude, m.longitude);
-            gmap.addMarker(new MarkerOptions()
-                    .position(pos)
-                    .title(m.title)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+
+            // capture the marker object
+            com.google.android.gms.maps.model.Marker marker = gmap.addMarker(
+                    new com.google.android.gms.maps.model.MarkerOptions()
+                            .position(pos)
+                            .title(m.title)
+                            .icon(com.google.android.gms.maps.model.BitmapDescriptorFactory
+                                    .defaultMarker(BitmapDescriptorFactory.HUE_RED))
+            );
+
+            // attach the memory id as a tag
+            if (marker != null) {
+                marker.setTag(m.id);
+            }
+
             b.include(pos);
+            hasPoint = true;
         }
-        gmap.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), 80));
+
+
+
+
+        if (hasPoint) {
+            gmap.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), 80));
+        } else {
+            gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(fallback, 7f));
+        }
     }
+
 }
